@@ -3286,6 +3286,7 @@ export function heartbeatService(db: Db) {
       const currentUserRedactionOptions = await getCurrentUserRedactionOptions();
       let lastOutputAtFlushPending = false;
       let lastOutputAtLatest: Date | null = null;
+      let lastOutputAtTimer: ReturnType<typeof setTimeout> | null = null;
       const onLog = async (stream: "stdout" | "stderr", chunk: string) => {
         const sanitizedChunk = redactCurrentUserText(chunk, currentUserRedactionOptions);
         if (stream === "stdout") stdoutExcerpt = appendExcerpt(stdoutExcerpt, sanitizedChunk);
@@ -3300,8 +3301,9 @@ export function heartbeatService(db: Db) {
           await db.update(heartbeatRuns)
             .set({ lastOutputAt: lastOutputAtLatest, updatedAt: new Date() })
             .where(eq(heartbeatRuns.id, runId));
-          setTimeout(() => {
+          lastOutputAtTimer = setTimeout(() => {
             lastOutputAtFlushPending = false;
+            lastOutputAtTimer = null;
             if (!lastOutputAtLatest) return;
             db.update(heartbeatRuns)
               .set({ lastOutputAt: lastOutputAtLatest, updatedAt: new Date() })
@@ -3440,6 +3442,8 @@ export function heartbeatService(db: Db) {
         },
         authToken: authToken ?? undefined,
       });
+      // Clear the debounce timer now that the run is complete
+      if (lastOutputAtTimer) { clearTimeout(lastOutputAtTimer); lastOutputAtTimer = null; }
       const adapterManagedRuntimeServices = adapterResult.runtimeServices
         ? await persistAdapterManagedRuntimeServices({
             db,
