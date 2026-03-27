@@ -36,6 +36,7 @@ export interface HeartbeatRun {
   processPid: number | null;
   processGroupId?: number | null;
   processStartedAt: Date | null;
+  lastOutputAt: Date | null;
   retryOfRunId: string | null;
   processLossRetryCount: number;
   contextSnapshot: Record<string, unknown> | null;
