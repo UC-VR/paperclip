@@ -2419,7 +2419,7 @@ export function heartbeatService(db: Db) {
     const nextStatus =
       runningCount > 0
         ? "running"
-        : outcome === "succeeded" || outcome === "cancelled"
+        : outcome === "succeeded" || outcome === "cancelled" || outcome === "timed_out"
           ? "idle"
           : "error";
 
@@ -2623,7 +2623,7 @@ export function heartbeatService(db: Db) {
           await releaseIssueExecutionAndPromote(killedRun);
         }
 
-        await finalizeAgentStatus(run.agentId, "failed");
+        await finalizeAgentStatus(run.agentId, "timed_out");
         await startNextQueuedRunForAgent(run.agentId);
         runningProcesses.delete(run.id);
         idleKilled.push(run.id);

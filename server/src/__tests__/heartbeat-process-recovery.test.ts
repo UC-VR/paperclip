@@ -407,10 +407,11 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
     const sixteenMinutesAgo = new Date(Date.now() - 16 * 60 * 1000);
     const child = spawnAliveProcess();
     childProcesses.add(child);
-    const { runId } = await seedRunFixture({
+    const { runId, agentId } = await seedRunFixture({
       processPid: child.pid ?? null,
       startedAt: sixteenMinutesAgo,
       lastOutputAt: sixteenMinutesAgo,
+      agentStatus: "running",
     });
     runningProcesses.set(runId, { child, graceSec: 10 } as any);
     const heartbeat = heartbeatService(db);
@@ -422,6 +423,10 @@ describeEmbeddedPostgres("heartbeat orphaned process recovery", () => {
       const run = await heartbeat.getRun(runId);
       expect(run?.status).toBe("failed");
       expect(run?.errorCode).toBe("idle_timeout");
+
+      // Agent should return to idle (not error) after an idle timeout kill
+      const agent = await db.select().from(agents).where(eq(agents.id, agentId)).then((rows) => rows[0] ?? null);
+      expect(agent?.status).toBe("idle");
     } finally {
       runningProcesses.delete(runId);
     }
